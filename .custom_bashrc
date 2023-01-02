@@ -17,7 +17,7 @@ git_branch_name() {
   exit_code=$?
   if [ $exit_code = 0 ]; then
     res=`git branch --show-current`
-    echo "($res)"
+    echo -e "\033[38;2;0;255;0m($res)\033[m"
   else
     echo ""
   fi
@@ -26,7 +26,8 @@ git_branch_name() {
 # -- Display prompt in bash --
 # all color must be inside \[__color_code_stuff\]
 # which also means that, the __end_color_code_stuff must also be inside it's own \[___code___\] block
-PS1="\[\033[48;2;110;39;48m\][\u@/\W]\[\033[m\]\[\033[38;2;0;255;0m\]\$(git_branch_name)\[\033[m\]\\$ "
+
+PS1="\[\033[48;2;110;39;48m\][\u@/\W]\[\033[m\]\$(git_branch_name)\\$ "
 
 # Setup dev-environment for RR recordings
 setuprr() {
