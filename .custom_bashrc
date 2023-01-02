@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Swap escape / caps lock positions. Can be used in both X11 & Wayland.
+# Also aliases vscode, so that it functions at least at the bare minimum on Wayland
+if [ "$XDG_SESSION_TYPE" == "wayland" ]; then
+  # this doesn't "fix" rendering problems on wayland for code
+  # but certainly improves _a lot_. Without it, VSCode becomes unusable.
+  alias code="code --ozone-platform=wayland"
+  gsettings set org.gnome.desktop.input-sources xkb-options "['caps:swapescape']"
+else
+  setxkbmap -option caps:swapescape
+fi
+
+# Output current branch name or "". Used in prompt (PS1)
+git_branch_name() {
+  git status 2>/dev/null 1>/dev/null;
+  exit_code=$?
+  if [ $exit_code = 0 ]; then
+    res=`git branch --show-current`
+    echo "($res)"
+  else
+    echo ""
+  fi
+}
+
+# -- Display prompt in bash --
+# all color must be inside \[__color_code_stuff\]
+# which also means that, the __end_color_code_stuff must also be inside it's own \[___code___\] block
+PS1="\[\033[48;2;110;39;48m\][\u@/\W]\[\033[m\]\[\033[38;2;0;255;0m\]\$(git_branch_name)\[\033[m\]\\$ "
+
+# Setup dev-environment for RR recordings
+setuprr() {
+  sudo sysctl kernel.perf_event_paranoid=1
+  sudo sysctl kernel.yama.ptrace_scope=0
+  if [ "$RR_SRC" == "" ]; then
+    echo "You must set \$RR_SRC environment variable so that zen_workaround.py can be found"
+  else
+    sudo $RR_SRC/scripts/zen_workaround.py
+  fi
+}
+
+# Configure GDB 
+cfggdb() {
+  ~/scripts/gdb_config.sh $@
+}
+
+# Need to be called from within GDB build root directory
+rungdb() {
+  ./gdb/gdb --data-directory=./gdb/data-directory $@
+}
+
+# Edits this file. 
+editbashrc() {
+  nvim ~/.custom_bashrc
+  source ~/.custom_bashrc
+}
+
+rrnosysbuf() {
+  rr record -n $@
+}
+
+rrsinglestep() {
+  ./bin/rr $1 --single-step=event,icount,rip,gp_x16 --trace-start=$2 -e $3
+}
+
+rrr() {
+  if [ "$RR_RELEASE_BUILD_DIR" == "" ]; then
+    echo "You must set env var RR_RELEASE_BUILD_DIR (root of RR build directory)."
+  else
+    $RR_RELEASE_BUILD_DIR/bin/rr $@
+  fi
+}
+
+rrd() {
+  if [ "$RR_DEBUG_BUILD_DIR" == "" ]; then
+    echo "You must set env var RR_DEBUG_BUILD_DIR (root of RR build directory)."
+  else
+    $RR_DEBUG_BUILD_DIR/bin/rr $@
+  fi
+}
+
+alias c_test="ctest --output-on-failure"
+
+paranoid_setting=`sysctl kernel.perf_event_paranoid`
+
+# Check if the proper system settings are in place for use of RR recording.
+if [ "$paranoid_setting" != "kernel.perf_event_paranoid = 1" ]; then
+  echo "run setuprr to configure Linux for RR recording & replay"
+fi
